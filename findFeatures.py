@@ -1,10 +1,11 @@
 #!/usr/local/bin/python2.7
-
+#-*- encoding:utf-8 -*-
 import argparse as ap
 import cv2
 import imutils 
 import numpy as np
 import os
+import csv
 from sklearn.svm import LinearSVC
 from sklearn.externals import joblib
 from scipy.cluster.vq import *
@@ -13,23 +14,33 @@ from sklearn.preprocessing import StandardScaler
 # Get the path of the training set
 parser = ap.ArgumentParser()
 parser.add_argument("-t", "--trainingSet", help="Path to Training Set", required="True")
+parser.add_argument("-c", "--csv")
 args = vars(parser.parse_args())
 
 # Get the training classes names and store them in a list
 train_path = args["trainingSet"]
-training_names = os.listdir(train_path)
 
-# Get all the path to the images and save them in a list
-# image_paths and the corresponding label in image_paths
-image_paths = []
-image_classes = []
-class_id = 0
-for training_name in training_names:
-    dir = os.path.join(train_path, training_name)
-    class_path = imutils.imlist(dir)
-    image_paths+=class_path
-    image_classes+=[class_id]*len(class_path)
-    class_id+=1
+if args['csv']:
+    with open(args['csv'], 'r') as csvfile:
+        r = csv.reader(csvfile, delimiter=',')
+        csvcontent = [[unicode(cell, 'utf-8') for cell in row] for row in r]
+    image_paths, image_classes_full = zip(*[(os.path.join(train_path, f[0]), f[1]) for f in csvcontent])
+    training_names = list(set(image_classes_full))
+    image_classes = [training_names.index(i) for i in image_classes_full]
+else:
+    training_names = os.listdir(train_path)
+
+    # Get all the path to the images and save them in a list
+    # image_paths and the corresponding label in image_paths
+    image_paths = []
+    image_classes = []
+    class_id = 0
+    for training_name in training_names:
+        dir = os.path.join(train_path, training_name)
+        class_path = imutils.imlist(dir)
+        image_paths+=class_path
+        image_classes+=[class_id]*len(class_path)
+        class_id+=1
 
 # Create feature extraction and keypoint detector objects
 fea_det = cv2.FeatureDetector_create("SIFT")

@@ -1,8 +1,10 @@
 #!/usr/local/bin/python2.7
+#-*- encoding:utf-8 -*-
 
 import argparse as ap
 import cv2
 import imutils 
+import csv
 import numpy as np
 import os
 from sklearn.svm import LinearSVC
@@ -18,6 +20,7 @@ group = parser.add_mutually_exclusive_group(required=True)
 group.add_argument("-t", "--testingSet", help="Path to testing Set")
 group.add_argument("-i", "--image", help="Path to image")
 parser.add_argument('-v',"--visualize", action='store_true')
+parser.add_argument("-c", "--csv")
 args = vars(parser.parse_args())
 
 # Get the path of the testing image(s) and store them in a list
@@ -29,11 +32,17 @@ if args["testingSet"]:
     except OSError:
         print "No such directory {}\nCheck if the file exists".format(test_path)
         exit()
-    for testing_name in testing_names:
-        dir = os.path.join(test_path, testing_name)
-        class_path = imutils.imlist(dir)
-        image_paths+=class_path
-else:
+    if args["csv"]:
+        with open(args['csv'], 'r') as csvfile:
+            r = csv.reader(csvfile, delimiter=',')
+            csvcontent = [[unicode(cell, 'utf-8') for cell in row] for row in r]
+            image_paths = [os.path.join(test_path, f[0]) for f in csvcontent]
+    else:
+        for testing_name in testing_names:
+            dir = os.path.join(test_path, testing_name)
+            class_path = imutils.imlist(dir)
+            image_paths+=class_path
+elif args["image"]:
     image_paths = [args["image"]]
     
 # Create feature extraction and keypoint detector objects
@@ -83,3 +92,5 @@ if args["visualize"]:
         cv2.putText(image, prediction, pt ,cv2.FONT_HERSHEY_SCRIPT_COMPLEX, 2, [0, 255, 0], 2)
         cv2.imshow("Image", image)
         cv2.waitKey(3000)
+else:
+    print u"\n".join(u",".join(t) for t in zip(image_paths, predictions)).encode("utf-8", 'ignore')
