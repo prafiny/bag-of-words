@@ -6,10 +6,37 @@ import imutils
 import numpy as np
 import os
 import csv
-from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 from sklearn.externals import joblib
 from scipy.cluster.vq import *
 from sklearn.preprocessing import StandardScaler
+from sklearn.multiclass import OneVsRestClassifier
+
+from Queue import Queue
+from threading import Thread
+
+class FeaturesWorker(Thread):
+    def __init__(self, queue, output_list):
+        Thread.__init__(self)
+        self.queue = queue
+        self.output_list = output_list
+        
+        # Create feature extraction and keypoint detector objects
+        self.fea_det = cv2.FeatureDetector_create("SIFT")
+        self.des_ext = cv2.DescriptorExtractor_create("SIFT")
+
+    def run(self):
+        while True:
+            image_path = self.queue.get()
+            im = cv2.imread(image_path)
+            kpts = self.fea_det.detect(im)
+            kpts, des = self.des_ext.compute(im, kpts)
+            del im
+            self.output_list.append((image_path, des))  
+            
+            self.queue.task_done()
+
+flatten = lambda l : [y for x in l for y in x]
 
 # Get the path of the training set
 parser = ap.ArgumentParser()
@@ -42,26 +69,38 @@ else:
         image_classes+=[class_id]*len(class_path)
         class_id+=1
 
-# Create feature extraction and keypoint detector objects
-fea_det = cv2.FeatureDetector_create("SIFT")
-des_ext = cv2.DescriptorExtractor_create("SIFT")
+# List of lists where all the descriptors are stored
+des_lists = list()
 
-# List where all the descriptors are stored
-des_list = []
+# Parallelized feature extraction
+queue = Queue()
+for i in image_paths:
+    queue.put(i)
 
-for image_path in image_paths:
-    im = cv2.imread(image_path)
-    kpts = fea_det.detect(im)
-    kpts, des = des_ext.compute(im, kpts)
-    des_list.append((image_path, des))   
+for x in range(4):
+    des_lists.append(list())
+    worker = FeaturesWorker(queue, des_lists[x])
+    # Setting daemon to True will let the main thread exit even though the workers are blocking
+    worker.daemon = True
+    worker.start()
+
+print "Workers created, processing…"
+
+queue.join()
+# Merging lists
+des_list = flatten(des_lists)
+del des_lists
+
+print "Descriptor extraction done, creating dictionary"
     
 # Stack all the descriptors vertically in a numpy array
 descriptors = des_list[0][1]
+
 for image_path, descriptor in des_list[1:]:
     descriptors = np.vstack((descriptors, descriptor))  
 
 # Perform k-means clustering
-k = 100
+k = 1000
 voc, variance = kmeans(descriptors, k, 1) 
 
 # Calculate the histogram of features
@@ -80,7 +119,7 @@ stdSlr = StandardScaler().fit(im_features)
 im_features = stdSlr.transform(im_features)
 
 # Train the Linear SVM
-clf = LinearSVC()
+clf = OneVsRestClassifier(SVC(kernel='linear', probability=False, decision_function_shape='ovr'))
 clf.fit(im_features, np.array(image_classes))
 
 # Save the SVM

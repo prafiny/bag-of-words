@@ -7,9 +7,10 @@ import imutils
 import csv
 import numpy as np
 import os
-from sklearn.svm import LinearSVC
+from sklearn.svm import SVC
 from sklearn.externals import joblib
 from scipy.cluster.vq import *
+from sklearn.multiclass import OneVsRestClassifier
 
 # Load the classifier, class names, scaler, number of clusters and vocabulary 
 clf, classes_names, stdSlr, k, voc = joblib.load("bof.pkl")
@@ -54,10 +55,13 @@ des_list = []
 
 for image_path in image_paths:
     im = cv2.imread(image_path)
-    if im == None:
+    if im.shape is None:
         print "No such file {}\nCheck if the file exists".format(image_path)
         exit()
     kpts = fea_det.detect(im)
+#    kp_img = im.copy()
+#    cv2.drawKeypoints(im, kpts, kp_img, flags=cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+#    imutils.show(kp_img)
     kpts, des = des_ext.compute(im, kpts)
     des_list.append((image_path, des))   
     
@@ -82,6 +86,8 @@ test_features = stdSlr.transform(test_features)
 
 # Perform the predictions
 predictions =  [classes_names[i] for i in clf.predict(test_features)]
+decision_func = [zip(classes_names, p) for p in clf.decision_function(test_features)]
+top = [[c for c, _ in sorted(r, key=lambda t: t[1], reverse=True)] for r in decision_func] 
 
 # Visualize the results, if "visualize" flag set to true by the user
 if args["visualize"]:
@@ -93,4 +99,4 @@ if args["visualize"]:
         cv2.imshow("Image", image)
         cv2.waitKey(3000)
 else:
-    print u"\n".join(u",".join(t) for t in zip(image_paths, predictions)).encode("utf-8", 'ignore')
+    print u"\n".join(u",".join(t) for t in zip(image_paths, [u",".join(c) for c in top])).encode("utf-8", 'ignore')
