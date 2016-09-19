@@ -6,7 +6,7 @@ import imutils
 import numpy as np
 import os
 import csv
-from sklearn.svm import SVC
+from sklearn.svm import LinearSVC
 from sklearn.externals import joblib
 from scipy.cluster.vq import *
 from sklearn.preprocessing import StandardScaler
@@ -100,7 +100,7 @@ for image_path, descriptor in des_list[1:]:
     descriptors = np.vstack((descriptors, descriptor))  
 
 # Perform k-means clustering
-k = 1000
+k = 500
 voc, variance = kmeans(descriptors, k, 1) 
 
 # Calculate the histogram of features
@@ -119,7 +119,7 @@ stdSlr = StandardScaler().fit(im_features)
 im_features = stdSlr.transform(im_features)
 
 # Train the Linear SVM
-clf = OneVsRestClassifier(SVC(kernel='linear', probability=False, decision_function_shape='ovr'))
+clf = LinearSVC()
 clf.fit(im_features, np.array(image_classes))
 
 # Save the SVM
