@@ -88,9 +88,10 @@ print "Workers created, processing…"
 
 queue.join()
 # Merging lists
-des_list = flatten(des_lists)
+scrambled_des_list = flatten(des_lists)
 del des_lists
-
+des_list = flatten([filter(lambda t: t[0] == i, scrambled_des_list) for i in image_paths])
+del scrambled_des_list
 print "Descriptor extraction done, creating dictionary"
     
 # Stack all the descriptors vertically in a numpy array
@@ -100,7 +101,7 @@ for image_path, descriptor in des_list[1:]:
     descriptors = np.vstack((descriptors, descriptor))  
 
 # Perform k-means clustering
-k = 500
+k = 1000
 voc, variance = kmeans(descriptors, k, 1) 
 
 # Calculate the histogram of features
