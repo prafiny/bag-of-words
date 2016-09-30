@@ -99,4 +99,4 @@ if args["visualize"]:
         cv2.imshow("Image", image)
         cv2.waitKey(3000)
 else:
-    print u"\n".join(u",".join(t) for t in zip(image_paths, [u",".join(c) for c in top])).encode("utf-8", 'ignore')
+    print u"\n".join(u",".join(t) for t in zip([os.path.basename(i) for i in image_paths], [u",".join(c) for c in top])).encode("utf-8", 'ignore')
