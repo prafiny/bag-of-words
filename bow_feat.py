@@ -85,4 +85,4 @@ idf = np.array(np.log((1.0*len(image_paths)+1) / (1.0*nbr_occurences + 1)), 'flo
 test_features = stdSlr.transform(test_features)
 
 for f, d in zip(image_paths, test_features):
-    print(os.path.basename(f) + '\t' + "\t".join(d))
+    print(os.path.basename(f) + '\t' + "\t".join([str(i) for i in d]))
